@@ -1,5 +1,6 @@
 package it.polito.tdp.metroparis.model;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,24 +23,30 @@ import it.polito.tdp.metroparis.db.MetroDAO;
 public class Model {
 	
 	private Graph<Fermata, DefaultEdge> grafo ; // grafo NON pesato
+	private List<Fermata> fermate = null;
+	private Map<Integer, Fermata> fermateIdMap = null;
 	
-	// !!!
+	
+	// !!!: di fatto può anche essere private come metodo, al controller non interessa
 	/* Non dentro al costruttore poiché il grafo potrebbe cambiare anche dopo che già sia stato costruito l'oggetto Model */
-	public void creaGrafo() {
+	private void creaGrafo() {
 		this.grafo = new SimpleDirectedGraph<Fermata, DefaultEdge>(DefaultEdge.class);
 		
-		// connessione al DB per prendere le fermate e inserirle come vertici del grafo
-		MetroDAO dao = new MetroDAO();
-		List<Fermata> fermate = dao.getAllFermate();
+//		// connessione al DB per prendere le fermate e inserirle come vertici del grafo
+//		List<Fermata> fermate = dao.getAllFermate();
 		
-		// pattern Identity Map
-		Map<Integer, Fermata> fermateIdMap = new HashMap<>();
-		for(Fermata f : fermate) {
-			fermateIdMap.put(f.getIdFermata(), f);
-		}
+		/* */
+		
+//		// pattern Identity Map
+//		Map<Integer, Fermata> fermateIdMap = new HashMap<>();
+//		for(Fermata f : fermate) {
+//			fermateIdMap.put(f.getIdFermata(), f);
+//		}
+		
+		/* */
 		
 		// this.grafo.addVertex();
-		Graphs.addAllVertices(grafo, fermate);
+		/**/
 		
 		/* METODO 1: itero su ogni coppia di vertici (n^2 query) */
 		
@@ -57,41 +64,44 @@ public class Model {
 		/* --> tramite restituzione id */
 		
 		// si può iterare su fermate oppure sfruttando i vertici del grafo.vertexSet()
-		for(Fermata partenza : fermate) {
-			List<Integer> idConnesse = dao.getIdFermateConnesse(partenza);
-			for(Integer id : idConnesse) {
-				Fermata arrivo = null; // fermata che possiede tale id
-				for(Fermata f : fermate) // invece che scandire la lista si potrebbe creare un
-										 // nuovo oggetto che abbia solo l'informazione sull'id
-										 // poiché basta che siano implementati hashCode e equals()
-					if(f.getIdFermata() == id) {
-						arrivo = f;
-						break;
-					}
-				this.grafo.addEdge(partenza, arrivo);
-			}
-		}
-		
-		/* --> il dao ritorna degli oggetti Fermata */
-		for(Fermata partenza : fermate) {
-			List<Fermata> arrivi = dao.getFermateConnesse(partenza);
-			for(Fermata arrivo : arrivi)
-				this.grafo.addEdge(partenza, arrivo);
-		}
-		
-		/* --> il dao restituisce id numerici che vengono convertiti in oggetti tramite una Map<Integer,Fermata> */
-		// pattern Identity Map
-		
-		for(Fermata partenza : fermate) {
-			List<Integer> idConnesse = dao.getIdFermateConnesse(partenza);
-			for(Integer id : idConnesse) {
-				Fermata arrivo = fermateIdMap.get(id);
-				this.grafo.addEdge(partenza, arrivo);
-			}
-		}
-		
+//		for(Fermata partenza : fermate) {
+//			List<Integer> idConnesse = dao.getIdFermateConnesse(partenza);
+//			for(Integer id : idConnesse) {
+//				Fermata arrivo = null; // fermata che possiede tale id
+//				for(Fermata f : fermate) // invece che scandire la lista si potrebbe creare un
+//										 // nuovo oggetto che abbia solo l'informazione sull'id
+//										 // poiché basta che siano implementati hashCode e equals()
+//					if(f.getIdFermata() == id) {
+//						arrivo = f;
+//						break;
+//					}
+//				this.grafo.addEdge(partenza, arrivo);
+//			}
+//		}
+//		
+//		/* --> il dao ritorna degli oggetti Fermata */
+//		for(Fermata partenza : fermate) {
+//			List<Fermata> arrivi = dao.getFermateConnesse(partenza);
+//			for(Fermata arrivo : arrivi)
+//				this.grafo.addEdge(partenza, arrivo);
+//		}
+//		
+//		/* --> il dao restituisce id numerici che vengono convertiti in oggetti tramite una Map<Integer,Fermata> */
+//		// pattern Identity Map
+//		
+//		for(Fermata partenza : fermate) {
+//			List<Integer> idConnesse = dao.getIdFermateConnesse(partenza);
+//			for(Integer id : idConnesse) {
+//				Fermata arrivo = fermateIdMap.get(id);
+//				this.grafo.addEdge(partenza, arrivo);
+//			}
+//		}
+//		
 		/* METODO 3: una sola query che restituisca le coppie di fermate da collegare */
 		/* --> usando una Map (pattern Identity Map) */
+		
+		Graphs.addAllVertices(grafo, this.getFermate());
+		MetroDAO dao = new MetroDAO();
 		
 		List<CoppiaId> fermateDaCollegare = dao.getAllFermateConnesse();
 		for(CoppiaId coppia : fermateDaCollegare) {
@@ -99,9 +109,9 @@ public class Model {
 					fermateIdMap.get(coppia.getIdArrivo()));
 		}
 		
-		System.out.println(this.grafo);
-		System.out.println("Numero di vertici: " + this.grafo.vertexSet().size());
-		System.out.println("Numero di archi: " + this.grafo.edgeSet().size());
+//		System.out.println(this.grafo);
+//		System.out.println("Numero di vertici: " + this.grafo.vertexSet().size());
+//		System.out.println("Numero di archi: " + this.grafo.edgeSet().size());
 		
 		this.visitaGrafo(fermate.get(0));
 	}
@@ -110,12 +120,60 @@ public class Model {
 														// Depth	  					// da dove partire
 		GraphIterator<Fermata, DefaultEdge> visita = new BreadthFirstIterator<>(this.grafo, partenza);
 		
+		// per registrare il percorso
+		/*
+		 * 1- creare una classe che implementi jgrapht.TraversalListener
+		 * 2- implementare i metodi dell'interfaccia
+		 * 3- aggiungere il listener nel percorso
+		 * 4- il Listener opera chiamando i suoi metodi quando vengono chiamati next() e hasNext()
+		 * 5- salvo nella Mappa 'inversa', inserendo root che è precedeuto da null
+		 * 6- nella classe Listener salvo la 'mappa' di albero inverso poiché dal metodo edgeTraversed passa tutto
+		 * 7- senza fare nulla si riempie da solo l'albero inverso nella classe listener
+		 * 8- print
+		 */
+		
+		Map<Fermata, Fermata> alberoInverso = new HashMap<>();
+		alberoInverso.put(partenza, null); // root non ha predecessore
+		
+		visita.addTraversalListener(new RegistraAlberoDiVisita(alberoInverso, this.grafo));
+		
 		while(visita.hasNext()) {
 			Fermata f = visita.next();
 			
 			// aggiungo a una collection o stampo
-			System.out.println(f);
+			//System.out.println(f);
+			
+			// senza fare nulla si riempie da solo l'albero inverso nella classe listener
 		}
+		
+		List<Fermata> percorso = new ArrayList<>();
+		
+//		
+//		fermata = arrivo 
+//		while(fermata!=null) {
+//			fermata = alberoInverso.get(fermata);
+//			percorso.add(fermata);
+//	}
 	}
 
+	public List<Fermata> getFermate() {
+		if(this.fermate==null) {
+			MetroDAO dao = new MetroDAO();
+			this.fermate = dao.getAllFermate();
+
+			// pattern Identity Map
+			this.fermateIdMap = new HashMap<>();
+			for(Fermata f : fermate) {
+				fermateIdMap.put(f.getIdFermata(), f);
+			}
+		}
+		return fermate;
+	}
+	
+	public List<Fermata> calcolaPercorso(Fermata partenza, Fermata arrivo) {
+		this.creaGrafo();
+		this.visitaGrafo(partenza);
+		
+		return null;
+	}
 }
