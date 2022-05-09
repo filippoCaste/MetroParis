@@ -70,7 +70,7 @@ public class Model {
 //				Fermata arrivo = null; // fermata che possiede tale id
 //				for(Fermata f : fermate) // invece che scandire la lista si potrebbe creare un
 //										 // nuovo oggetto che abbia solo l'informazione sull'id
-//										 // poiché basta che siano implementati hashCode e equals()
+//										 // poiché basta che siano implementati hashCode() ed equals()
 //					if(f.getIdFermata() == id) {
 //						arrivo = f;
 //						break;
@@ -96,7 +96,7 @@ public class Model {
 //				this.grafo.addEdge(partenza, arrivo);
 //			}
 //		}
-//		
+		
 		/* METODO 3: una sola query che restituisca le coppie di fermate da collegare */
 		/* --> usando una Map (pattern Identity Map) */
 		
@@ -116,7 +116,7 @@ public class Model {
 		this.visitaGrafo(fermate.get(0));
 	}
 	
-	public void visitaGrafo(Fermata partenza) {
+	public Map<Fermata, Fermata> visitaGrafo(Fermata partenza) {
 														// Depth	  					// da dove partire
 		GraphIterator<Fermata, DefaultEdge> visita = new BreadthFirstIterator<>(this.grafo, partenza);
 		
@@ -127,6 +127,7 @@ public class Model {
 		 * 3- aggiungere il listener nel percorso
 		 * 4- il Listener opera chiamando i suoi metodi quando vengono chiamati next() e hasNext()
 		 * 5- salvo nella Mappa 'inversa', inserendo root che è precedeuto da null
+		 *    (key: vertice, value: da quale vertice si raggiunge key)
 		 * 6- nella classe Listener salvo la 'mappa' di albero inverso poiché dal metodo edgeTraversed passa tutto
 		 * 7- senza fare nulla si riempie da solo l'albero inverso nella classe listener
 		 * 8- print
@@ -135,9 +136,11 @@ public class Model {
 		Map<Fermata, Fermata> alberoInverso = new HashMap<>();
 		alberoInverso.put(partenza, null); // root non ha predecessore
 		
+		// concedo al Listener di ascoltare
 		visita.addTraversalListener(new RegistraAlberoDiVisita(alberoInverso, this.grafo));
 		
 		while(visita.hasNext()) {
+			@SuppressWarnings("unused")
 			Fermata f = visita.next();
 			
 			// aggiungo a una collection o stampo
@@ -146,14 +149,7 @@ public class Model {
 			// senza fare nulla si riempie da solo l'albero inverso nella classe listener
 		}
 		
-		List<Fermata> percorso = new ArrayList<>();
-		
-//		
-//		fermata = arrivo 
-//		while(fermata!=null) {
-//			fermata = alberoInverso.get(fermata);
-//			percorso.add(fermata);
-//	}
+		return alberoInverso;
 	}
 
 	public List<Fermata> getFermate() {
@@ -172,8 +168,17 @@ public class Model {
 	
 	public List<Fermata> calcolaPercorso(Fermata partenza, Fermata arrivo) {
 		this.creaGrafo();
-		this.visitaGrafo(partenza);
 		
-		return null;
+		Map<Fermata, Fermata> alberoInverso = this.visitaGrafo(partenza);
+		
+		Fermata corrente = arrivo;
+		List<Fermata> percorso = new ArrayList<>();
+		
+		while(corrente!=null) { //null è il predecessore della fermata root
+			percorso.add(0, corrente); // aggiunge in testa alla lista, spostando gli altri
+			corrente = alberoInverso.get(corrente);
+		}
+			
+		return percorso;
 	}
 }

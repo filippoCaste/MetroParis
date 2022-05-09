@@ -1,6 +1,5 @@
 package it.polito.tdp.metroparis.model;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import org.jgrapht.Graph;
@@ -50,7 +49,7 @@ public class RegistraAlberoDiVisita implements TraversalListener<Fermata, Defaul
 			alberoInverso.put(target, source);
 //			System.out.println(target + " si raggiunge da " + source);
 		}
-		else if(!alberoInverso.containsKey(source)) { // se source ancora non era stato scoperto, lo scopro da target --> lo aggiungo
+		else if(!alberoInverso.containsKey(source)) { // se source ancora non era stato scoperto, lo scopro da target (che già c'è) --> lo aggiungo
 			alberoInverso.put(source, target);
 //			System.out.println(source + " si raggiunge da " + target);
 		}
